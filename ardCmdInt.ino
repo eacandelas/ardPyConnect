@@ -1,3 +1,7 @@
+#define CMD_RX_SIZE 3
+#define MSG_SIZE 32
+#define BAUD_RATE 9600
+
 typedef void (*cmd)(char, char);
 
 struct cmdStruct{
@@ -6,11 +10,11 @@ struct cmdStruct{
 	char const *msg;
 };
 
-struct cmdStruct cmdTable[4]={
+struct cmdStruct cmdTable[]={
 	{'1', &dw, "dw called"},
-	{'2', &fun2, "fun2 called"},
-	{'3', &fun3, "fun3 called"},
-	{'4', &setPins, "setPins called"},
+	{'2', &ar, "ar called"},
+	{'3', &dr, "dr called"},
+	{'4', &sp, "sp called"},
 	{'0',0,""}
 };
 
@@ -19,29 +23,29 @@ int cmdTableSize = sizeof(cmdTable)/sizeof(cmdStruct);
 /*---------------- MAIN -----------------------*/
 
 void setup(){
-	Serial.begin(9600);
+	Serial.begin(BAUD_RATE);
 	Serial.println("Init");
 	Serial.print("Numero de comandos: ");
 	Serial.println(cmdTableSize);
 }
 
 void loop(){
-	char cmdArray[3];
+	char cmdArray[CMD_RX_SIZE];
 //        getCmd(cmdArray);
 //        delay(1000);
 	if(getCmd(cmdArray)==0){
-		excute(cmdArray);
+		execute(cmdArray);
 	}	
-				delay(1000);
+				delay(100);
 }
 
-/*----------------- Functions --------------------*/
+/*----------------- Cmd Functions --------------------*/
 
 
 void dw(char pin, char state){
 	boolean stateBool;
 	int pinInt = pin - '0';
-	char msg[32]; msg[0]='\0';
+	char msg[MSG_SIZE]; msg[0]='\0';
 	
 	if (state == '0'){
 		stateBool = false;
@@ -51,15 +55,15 @@ void dw(char pin, char state){
 	digitalWrite(pinInt, stateBool);
 	
 	Serial.println(pinInt);
-	sprintf(msg,"Setting pin %d - %d", pinInt, dirInt);
+	sprintf(msg,"Setting pin %d - %d", pinInt, stateBool);
 	Serial.println(msg);
 }
 
-void setPins(char pin, char dir){
+void sp(char pin, char dir){
   
-  int dirInt;
+  	int dirInt;
 	int pinInt = pin - '0';
-	char msg[32]; msg[0]='\0';
+	char msg[MSG_SIZE]; msg[0]='\0';
 
 	if (dir == '0'){
 		dirInt = INPUT; 															 // 0 = INPUT
@@ -69,40 +73,51 @@ void setPins(char pin, char dir){
 	pinMode(pinInt, dirInt);
 	
 	sprintf(msg,"Setting pin %d as %d", pinInt, dirInt);
-	Serial.print(msg);
+	Serial.println(msg);
 }
 
-void fun2(char pin, char value){
-	analogWrite(pin, value);
-	Serial.println("soy fun2");
+void ar(char pin, char value){
+	int pinInt = pin - '0';
+	char msg[MSG_SIZE]; msg[0]='\0';
+	int reading;
+	
+	reading = analogRead(pinInt);
+
+	sprintf(msg,"Aread from pin %d as %d", pinInt, reading);
+	Serial.println(msg);
 }
-void fun3(char pin, char value){
-	Serial.println("soy fun3");
-	Serial.println(pin);
-	Serial.println(value);
+
+void dr(char pin, char value){
+	int pinInt = pin - '0';
+	char msg[MSG_SIZE]; msg[0]='\0';
+	int pinState;
+
+	pinState = digitalRead(pinInt);
+
+	sprintf(msg,"State on pin %d is %d", pinInt, pinState);
+	Serial.println(msg);
 }
+
+
+/*-----------------operational functions------------------------------*/
 
 int getCmd(char cmdRx[]){
 	int bytesRx;
 	if (bytesRx = Serial.available()){
-								Serial.print("bytes in buffer");
-								Serial.println(bytesRx);
+			Serial.print("Bytes in buffer: ");
+			Serial.println(bytesRx);
 		for(int i = 0; i < (bytesRx); i++){	
 			char inChar = Serial.read();
 			cmdRx[i] = inChar;
-		}
-		for(int i = 0; i < (bytesRx); i++){	
 			Serial.println(cmdRx[i]);
-
 		}
 		return 0;
 	}
 	return 1;
 }
 
-
 void execute(char cmdArray[]){
-			for (int i=0; i < (cmdTableSize); i++){
+			for (int i = 0; i < (cmdTableSize); i++){
 				char cmdByte = cmdTable[i].name;
 				if ( cmdByte == cmdArray[0]){
 					cmdTable[i].thatFunc(cmdArray[1],cmdArray[2]);
