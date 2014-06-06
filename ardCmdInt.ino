@@ -1,6 +1,19 @@
+#include <GSM.h>
+
 #define CMD_RX_SIZE 3
 #define MSG_SIZE 32
 #define BAUD_RATE 9600
+
+// PIN Number for the SIM
+#define PINNUMBER ""
+
+// initialize the library instances
+GSM gsmAccess;
+GSM_SMS sms;
+
+// Array to hold the number a SMS is retreived from
+char senderNumber[20];  
+
 
 typedef void (*cmd)(char, char);
 
@@ -27,14 +40,17 @@ void setup(){
 	Serial.println("Init");
 	Serial.print("Numero de comandos: ");
 	Serial.println(cmdTableSize);
+
+	gsmInit();
 }
 
 void loop(){
 	char cmdArray[CMD_RX_SIZE];
+	char cmdBuffer[8];cmdBuffer[0]='\0';
 //        getCmd(cmdArray);
 //        delay(1000);
-	if(getCmd(cmdArray)==0){
-		execute(cmdArray);
+	if(smsGetCmd(cmdBuffer)==0){
+		execute(cmdBuffer);
 	}	
 				delay(100);
 }
@@ -124,4 +140,61 @@ void execute(char cmdArray[]){
 					Serial.println(cmdTable[i].msg);
 				}
 		}
+}
+
+/*--------------------- gsm functions ---------------*/
+
+void gsmInit(){
+	Serial.println("SMS command interface");
+
+	boolean notConnected = true;
+
+	while(notConnected){
+		if(gsmAccess.begin(PINNUMBER)==GSM_READY){
+	  		notConnected = false;
+	  	}else{
+	  		Serial.println("Not connected");
+	  		delay(1000);
+		}
+	}
+
+	Serial.println("GSM initialized");
+	Serial.println("Waiting for commands");
+}
+
+int smsGetCmd(char cmdBufferFun[]){
+  int i = 0;
+  int c;
+  // If there are any SMSs available()  
+  if (sms.available())
+  {
+	Serial.println("Message received from:");
+	
+	// Get remote number
+	sms.remoteNumber(senderNumber, 20);
+	Serial.println(senderNumber);
+
+	// Read message bytes and print them
+	while(c=sms.read()){
+		cmdBufferFun[i]=c;	
+		Serial.println(cmdBufferFun[i]);
+		i++;
+	}
+	cmdBufferFun[i] = '\0';
+	Serial.print("cmdBufferFun: ");
+	Serial.print(cmdBufferFun);
+
+	  
+	Serial.println("\nEND OF MESSAGE");
+	
+	// Delete message from modem memory
+	sms.flush();
+	Serial.println("MESSAGE DELETED");
+
+	delay(1000);
+	return 0;
+  }
+
+  delay(1000);
+  return 1;
 }
